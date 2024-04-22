@@ -20,3 +20,25 @@ export const userValidationSchema = {
         ...commonValidationRules
     }
 }
+
+export const loginValidationSchema = {
+    username:{
+        isLength:{
+            options:{
+                min:3,
+                max:10
+            },
+            errorMessage : "Username should have a minimum of 3 characters and a maximum of 10 characters"
+        },
+        ...commonValidationRules
+    },
+    password:{
+        isLength:{
+            options:{
+                min:8
+            },
+            errorMessage : "password should have at least 8 characters"
+        },
+        ...commonValidationRules
+    }
+}
