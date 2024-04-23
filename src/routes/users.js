@@ -1,11 +1,13 @@
 import { Router, response } from "express";
+import passport from "passport";
 import { checkSchema, validationResult, matchedData } from "express-validator";
 import { userValidationSchema, loginValidationSchema } from "../utils/validation.js"
 import { usersDB } from "../utils/constants.js";
 import { resolveUserByIndex } from "../utils/middleware.js";
-import session from "express-session";
+import "../auth-strategies/local-strategy.js"
 
 const router = Router();
+// router.use(passport());
 
 router.param('id', (req, res, next, id)=>{
     if (!/^\d+$/.test(id)) return res.status(400).send("id must contain characters from 0-9 only");
@@ -59,8 +61,8 @@ router.delete('/api/users/:id', resolveUserByIndex, (req, res)=>{
     res.sendStatus(204);
 });
 
-// fake auth with sessions
-router.post('/api/auth/', checkSchema(loginValidationSchema), (req, res)=>{
+// fake auth with passportjs
+router.post('/api/auth/', checkSchema(loginValidationSchema), passport.authenticate('local'), (req, res)=>{
     const result = validationResult(req); // check for errors in request body
     if (!result.isEmpty()) return res.send(result.array()); // return errors found in request body
 
@@ -72,7 +74,7 @@ router.post('/api/auth/', checkSchema(loginValidationSchema), (req, res)=>{
 });
 
 router.get('/api/auth/status/', (req, res)=>{
-    return req.session.user ? res.status(200).send(req.session.user) : res.status(403).send({"msg":"unauthenticated"});
+    return req.user ? res.status(200).send(req.user) : res.status(403).send({"msg":"unauthenticated"});
 });
 
 

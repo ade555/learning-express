@@ -3,6 +3,7 @@ import usersRouters from "./routes/users.js";
 import productRouters from "./routes/products.js";
 import cookieParser from "cookie-parser";
 import session from "express-session";
+import passport  from "passport";
 
 // initialize express app
 const app = express();
@@ -20,6 +21,8 @@ app.use(session({
         maxAge:60000 * 60
     }
 }));
+app.use(passport.initialize());
+app.use(passport.session());
 app.use(usersRouters);
 app.use(productRouters);
 
