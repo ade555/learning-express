@@ -18,6 +18,14 @@ export const userValidationSchema = {
             errorMessage : "Username should have a minimum of 3 characters and a maximum of 10 characters"
         },
         ...commonValidationRules
+    },
+    password:{
+        isLength:{
+            options:{
+                min:8
+            }
+        },
+        ...commonValidationRules
     }
 }
 

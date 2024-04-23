@@ -4,6 +4,10 @@ import productRouters from "./routes/products.js";
 import cookieParser from "cookie-parser";
 import session from "express-session";
 import passport  from "passport";
+import mongoose from "mongoose";
+import "dotenv/config";
+
+mongoose.connect(process.env.DB_CONNECTION).then(()=>console.log(`DB connected`)).catch((err)=>console.log(err));
 
 // initialize express app
 const app = express();

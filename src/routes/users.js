@@ -4,6 +4,7 @@ import { checkSchema, validationResult, matchedData } from "express-validator";
 import { userValidationSchema, loginValidationSchema } from "../utils/validation.js"
 import { usersDB } from "../utils/constants.js";
 import { resolveUserByIndex } from "../utils/middleware.js";
+import { User } from "../mongoose/schemas/users.js";
 import "../auth-strategies/local-strategy.js"
 
 const router = Router();
@@ -19,14 +20,19 @@ router.get('/api/users/', (req, res)=>{
 });
 
 // create new user
-router.post('/api/users/', checkSchema(userValidationSchema), (req, res)=>{
+router.post('/api/users/', checkSchema(userValidationSchema), async (req, res)=>{
     const result = validationResult(req);
     if (!result.isEmpty()) return res.send(result.array());
 
     const data = matchedData(req);
-    const newUser = {id:usersDB[usersDB.length -1].id +1, ...data}
-    usersDB.push(newUser);
-    res.status(201).send(newUser);
+    const newUser = new User(data);
+    try {
+        const savedUser = await newUser.save();
+        res.status(201).send(savedUser);
+    } catch (err) {
+        console.log(err);
+        return res.sendStatus(400);
+    }
 });
 
 // get a user by id
@@ -62,17 +68,25 @@ router.delete('/api/users/:id', resolveUserByIndex, (req, res)=>{
 });
 
 // fake auth with passportjs
-router.post('/api/auth/', checkSchema(loginValidationSchema), passport.authenticate('local'), (req, res)=>{
+router.post('/api/auth/', checkSchema(loginValidationSchema), passport.authenticate('local'), async (req, res)=>{
     const result = validationResult(req); // check for errors in request body
     if (!result.isEmpty()) return res.send(result.array()); // return errors found in request body
 
     const validatedData = matchedData(req)
-    const currentUser = usersDB.find(user=>user.username === validatedData.username);
+    const currentUser = await User.findOne({username:validatedData.username});
     if (!currentUser || validatedData.password !=currentUser.password) return res.status(401).send({"msg":"Incorrect username or password"});
     req.session.user = currentUser;
-    return res.status(200).send(validatedData);
+    return res.status(200).send(currentUser);
 });
 
+// logout
+router.post('/api/auth/logout', (req, res)=>{
+    if (!req.user) return res.sendStatus(401);
+    req.logOut((err)=>{
+        if (err) return res.sendStatus(400);
+        return res.sendStatus(200);
+    });
+});
 router.get('/api/auth/status/', (req, res)=>{
     return req.user ? res.status(200).send(req.user) : res.status(403).send({"msg":"unauthenticated"});
 });
