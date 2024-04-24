@@ -1,6 +1,5 @@
 import passport from "passport";
 import { Strategy } from "passport-local";
-import { usersDB } from "../utils/constants.js";
 import { User } from "../mongoose/schemas/users.js";
 
 passport.serializeUser((user, done)=>{

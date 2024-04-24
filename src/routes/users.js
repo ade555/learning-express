@@ -1,22 +1,30 @@
 import { Router, response } from "express";
 import passport from "passport";
 import { checkSchema, validationResult, matchedData } from "express-validator";
-import { userValidationSchema, loginValidationSchema } from "../utils/validation.js"
+import { userValidationSchema, userUpdateValidationSchema, loginValidationSchema } from "../utils/validation.js"
 import { usersDB } from "../utils/constants.js";
 import { resolveUserByIndex } from "../utils/middleware.js";
 import { User } from "../mongoose/schemas/users.js";
 import "../auth-strategies/local-strategy.js"
 
 const router = Router();
-// router.use(passport());
+
 
 router.param('id', (req, res, next, id)=>{
-    if (!/^\d+$/.test(id)) return res.status(400).send("id must contain characters from 0-9 only");
+    const uuidPattern = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!uuidPattern.test(id)) return res.status(400).send("Bad request");
     next();
 });
+
+// router.param('id', (req, res, next, id)=>{
+//     if (!/^\d+$/.test(id)) return res.status(400).send("id must contain characters from 0-9 only");
+//     next();
+// });
+
+
 // get all users
-router.get('/api/users/', (req, res)=>{
-    res.status(200).send(usersDB);
+router.get('/api/users/', async (req, res)=>{
+    res.status(200).send(await User.find());
 });
 
 // create new user
@@ -25,10 +33,9 @@ router.post('/api/users/', checkSchema(userValidationSchema), async (req, res)=>
     if (!result.isEmpty()) return res.send(result.array());
 
     const data = matchedData(req);
-    const newUser = new User(data);
     try {
-        const savedUser = await newUser.save();
-        res.status(201).send(savedUser);
+        const newUser = await User.create(data);
+        res.status(201).send(newUser);
     } catch (err) {
         console.log(err);
         return res.sendStatus(400);
@@ -36,34 +43,48 @@ router.post('/api/users/', checkSchema(userValidationSchema), async (req, res)=>
 });
 
 // get a user by id
-router.get('/api/users/:id/', (req, res)=>{
-    const {params:{id}} = req;
-    const parsedId = parseInt(id);
-    if (isNaN(parsedId)) return res.status(400).send("id must contain characters from 0-9 only");
-
-    const UserIndex = usersDB.findIndex((user)=>parsedId==user.id);
-    if (UserIndex==-1) return res.status(404).send("user not found");
-    const user = usersDB[UserIndex];
+router.get('/api/users/:_id/', async (req, res)=>{
+    const {params:{_id}} = req;
+    const user = await User.findById(_id);
+    if (!user) return res.status(404).send("user not found");
     res.send(user);
 
 });
 
 // update user by id
-router.patch('/api/users/:id/', checkSchema(userValidationSchema), resolveUserByIndex, (req, res)=>{
+router.patch('/api/users/:_id/', checkSchema(userUpdateValidationSchema), resolveUserByIndex, async (req, res)=>{
     const result = validationResult(req);
     if (!result.isEmpty()) return res.send(result.array());
 
-    const validatedData = matchedData(req);
-    const {UserIndex} = req;
+    const user = req.user;
+    if (!user) return res.status(401).send("unauthorized");
 
-    usersDB[UserIndex] = {...usersDB[UserIndex], ...validatedData};
-    res.send(usersDB[UserIndex]);
+    const validatedData = matchedData(req);
+    try {
+        Object.assign(user, validatedData); // update the user
+        const updatedUser = await user.save();
+        res.send(updatedUser);
+    } catch (err) {
+        console.log(`error: ${err}`)
+        return res.status(500).send("Unable to update user");
+    }
 });
 
 // delete user by id
-router.delete('/api/users/:id', resolveUserByIndex, (req, res)=>{
+router.delete('/api/users/:_id', resolveUserByIndex, async (req, res)=>{
     const {UserIndex} = req;
-    usersDB.splice(UserIndex, 1);
+    const requestingUser = req.user;
+    const user = await User.findById(UserIndex);
+
+    if (!requestingUser || !requestingUser.equals(user)) return res.status(401).send("unauthorized");
+    try {
+        await user.deleteOne();
+        res.status(204).send();
+    } catch (err) {
+        console.log(err);
+        return res.status(500).send("Unable to delete user");
+    }
+
     res.sendStatus(204);
 });
 

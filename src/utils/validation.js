@@ -1,3 +1,11 @@
+const makeFieldOptional = (schema) => {
+    const optionalSchema = {};
+    for (const field in schema) {
+        optionalSchema[field] = { ...schema[field], optional: true };
+    }
+    return optionalSchema;
+};
+
 const commonValidationRules = {
     isString:{
         errorMessage:"This field must be a string"
@@ -50,3 +58,5 @@ export const loginValidationSchema = {
         ...commonValidationRules
     }
 }
+
+export const userUpdateValidationSchema = makeFieldOptional(userValidationSchema);
