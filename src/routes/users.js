@@ -78,14 +78,14 @@ router.delete('/api/users/:_id', resolveUserByIndex, async (req, res)=>{
 
     if (!requestingUser || !requestingUser.equals(user)) return res.status(401).send("unauthorized");
     try {
+        console.log("before delete");
         await user.deleteOne();
+        console.log("after delete");
         res.status(204).send();
     } catch (err) {
         console.log(err);
         return res.status(500).send("Unable to delete user");
     }
-
-    res.sendStatus(204);
 });
 
 // fake auth with passportjs
